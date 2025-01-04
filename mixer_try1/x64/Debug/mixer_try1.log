@@ -1,6 +1,6 @@
 ﻿  mixer_try1.cpp
-C:\Users\ivan\source\repos\try1\mixer_try1\mixer_try1.cpp(79,15): warning C4311: '<function-style-cast>': pointer truncation from 'char *' to 'int'
-C:\Users\ivan\source\repos\try1\mixer_try1\mixer_try1.cpp(79,15): warning C4302: '<function-style-cast>': truncation from 'char *' to 'int'
-C:\Users\ivan\source\repos\try1\mixer_try1\mixer_try1.cpp(216,33): warning C4244: '=': conversion from 'double' to 'float', possible loss of data
-C:\Users\ivan\source\repos\try1\mixer_try1\mixer_try1.cpp(79,1): warning C4172: returning address of local variable or temporary : buffer
+C:\Users\ivan\source\repos\try1\mixer_try1\mixer_try1.cpp(81,15): warning C4311: '<function-style-cast>': pointer truncation from 'char *' to 'int'
+C:\Users\ivan\source\repos\try1\mixer_try1\mixer_try1.cpp(81,15): warning C4302: '<function-style-cast>': truncation from 'char *' to 'int'
+C:\Users\ivan\source\repos\try1\mixer_try1\mixer_try1.cpp(214,33): warning C4244: '=': conversion from 'double' to 'float', possible loss of data
+C:\Users\ivan\source\repos\try1\mixer_try1\mixer_try1.cpp(81,1): warning C4172: returning address of local variable or temporary : buffer
   mixer_try1.vcxproj -> C:\Users\ivan\source\repos\try1\x64\Debug\mixer_try1.exe

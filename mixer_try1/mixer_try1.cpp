@@ -1,3 +1,4 @@
+#define _CRT_SECURE_NO_WARNINGS
 #include <iostream>
 #include <mmdeviceapi.h>
 #include <endpointvolume.h>
@@ -9,6 +10,7 @@
 #include <Functiondiscoverykeys_devpkey.h>
 #include <vector>
 #include <string>
+
 
 using namespace std;
 
@@ -195,64 +197,79 @@ void ChangeVolumeForAllDevices(const vector<AudioDevice>& audioDevices) {
 }
 
 void changeVolumeForChosenDevice(const vector<AudioDevice>& audioDevices, HANDLE hSerial) {
-    cout << "Input device number:" << endl;
-    int num;
-    cin >> num;
+    //HRESULT hr = audioDevice.endpointVolume->GetMasterVolumeLevelScalar(&volumeLevel);
+    // Read data from the serial port
+    char buffer[256];
+    DWORD bytesRead;
+    float prevInputs[14]{};
+    while (true) {
+        if (ReadFile(hSerial, buffer, sizeof(buffer) - 1, &bytesRead, NULL)) {
 
-    if (num >= 0 && num < audioDevices.size()) {
-        const AudioDevice audioDevice = audioDevices[num];
-        if (audioDevice.endpointVolume) {
-            float volumeLevel = 0.0f;
-            HRESULT hr = audioDevice.endpointVolume->GetMasterVolumeLevelScalar(&volumeLevel);
-            // Read data from the serial port
-            char buffer[256];
-            DWORD bytesRead;
-			float prevVolume = 0;
-            while (true) {
-                if (ReadFile(hSerial, buffer, sizeof(buffer) - 1, &bytesRead, NULL)) {
-                    buffer[bytesRead] = '\0'; // Null-terminate the string
-                    //std::cout << "Read from COM5: " << buffer << std::endl;
-					// get the volume level from the serial port that should be between 0 and 1 float
-					volumeLevel = atof(buffer) / 1023;
-                    //cout << "volume level: " << volumeLevel << endl;
-                    if (volumeLevel < 0.0f) volumeLevel = 0.0f;
-                    if (volumeLevel > 1.0f) volumeLevel = 1.0f;
+			// buffer contains the volume level as a csv string of multiple values
+            // split them by comma into an array of size 12
+			char* token = strtok(buffer, ",");
+            float inputs[14]{};
+			int i = 0;
+			while (i < 14) {
+                inputs[i] = atof(token);
+				token = strtok(NULL, ",");
+				i++;
+			}
+			for (int i = 0; i < 14; i++) {
+				cout << inputs[i] << " ";
+			}
+			cout << endl;
 
-					// if the volume level has changed
-					if (abs(volumeLevel - prevVolume) > 0.001) {
-						// Set the new volume level
-                        cout << "volume level: " << volumeLevel << endl;
-                        hr = audioDevice.endpointVolume->SetMasterVolumeLevelScalar(volumeLevel, nullptr);
-					}
-                    
-                    //cout << endl;
-					//if (SUCCEEDED(hr)) {
-					//	cout << "Volume changed to: " << volumeLevel * 100 << "%" << endl;
-					//}
-					//else {
-					//	cout << "Failed to set the volume level." << endl;
-					//}
-                    // sleep 100 ms
-					prevVolume = volumeLevel;
-					Sleep(100);
-                }
-                else {
-                    std::cerr << "Error reading from COM5" << std::endl;
+
+            //buffer[bytesRead] = '\0'; // Null-terminate the string
+            //std::cout << "Read from COM5: " << buffer << std::endl;
+			// get the volume level from the serial port that should be between 0 and 1 float
+			//volumeLevel = atof(buffer) / 1023;
+            //cout << "volume level: " << volumeLevel << endl;
+
+			//checking the linear potentiometer values
+            if (inputs[0] == -1 && inputs[13] == -1) {
+                for (int i = 1; i < 5; i++) {
+                    inputs[i] = inputs[i] / 1023;
+                    // Clamp the volume level between 0.0 and 1.0
+                    if (inputs[i] < 0.0f) inputs[i] = 0.0f;
+                    if (inputs[i] > 1.0f) inputs[i] = 1.0f;
+
+                    //changing the respected volume levels
+                    if (abs(inputs[i] - prevInputs[i]) > 0.001) {
+                        // Set the new volume level
+                        HRESULT hr = audioDevices[i-1].endpointVolume->SetMasterVolumeLevelScalar(inputs[i], nullptr);
+                    }
                 }
             }
-            //cout << "setting the volume level to " << volumeLevel << endl;
+            //cout << endl;
+			//if (SUCCEEDED(hr)) {
+			//	cout << "Volume changed to: " << volumeLevel * 100 << "%" << endl;
+			//}
+			//else {
+			//	cout << "Failed to set the volume level." << endl;
+			//}
+            // sleep 100 ms
+			for (int i = 0; i < 14; i++) {
+				prevInputs[i] = inputs[i];
+			}
+			Sleep(100);
+        }
+        else {
+            std::cerr << "Error reading from COM5" << std::endl;
         }
     }
+    //cout << "setting the volume level to " << volumeLevel << endl;
 }
-
 int main() {
+
+	// Create a vector to store the audio devices
     vector<AudioDevice> audioDevices;
 
     // List audio session outputs and store them in the vector
     ListAudioSessionOutputs(audioDevices);
 
-    //readFromSerial();
-
+	// Open the serial port
     HANDLE hSerial = CreateFile(L"\\\\.\\COM5",
         GENERIC_READ | GENERIC_WRITE,
         0,
@@ -296,8 +313,21 @@ int main() {
 
     SetCommTimeouts(hSerial, &timeouts);
 
+	// create an array of the devices that should be managed by the serial port volume level
+	// prompt user to choose 4 devices and save them in an array
+	// then use the array to change the volume level of the devices
+	vector<AudioDevice> chosenDevices;
+	cout << "Choose 4 devices to manage by the serial port volume level" << endl;
+	for (int i = 0; i < 4; i++) {
+		cout << "Input device number:" << endl;
+		int num;
+		cin >> num;
+		if (num >= 0 && num < audioDevices.size()) {
+			chosenDevices.push_back(audioDevices[num]);
+		}
+	}
 
-    changeVolumeForChosenDevice(audioDevices, hSerial);
+    changeVolumeForChosenDevice(chosenDevices, hSerial);
 
     // Change volume for all devices
     //ChangeVolumeForAllDevices(audioDevices);
